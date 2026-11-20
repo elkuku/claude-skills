@@ -70,7 +70,7 @@ If something is missing, give the user the install or sign-in steps and wait. In
 ### 3. Route proposal
 
 1. In IITC, find `start` and the portals along `route`. Read them only; don't add anything to UMM yet.
-2. Split the portals into `count` missions in walking order. Keep about the same number of portals per mission, and respect MAT's minimum (check it, and note it in the next section). Each portal is used only once.
+2. Split the portals into `count` missions in walking order. Use at least 6 portals per mission (MAT's minimum), so `count × 6` portals or more in total, about the same number per mission. Each portal is used only once.
 3. Show the proposal as a table (mission, portal order, portal names) and give the walking length if you can. ⛔ Wait for approval or changes.
 
 ### 4. Build in UMM
@@ -98,7 +98,37 @@ The UMM docs date from 2022. If MAT's UI differs, describe what you see and ask.
 - Keep `banner.md` and `umm-banner.json` in `images_dir`.
 - Add new facts (MAT limits, UI changes) to the section below. Ask before committing.
 
-## Learned facts
+## Learned facts (first run: 2S-2026-12 Atacames, 2026-11-20)
 
-- UMM fills in the title, description and waypoints. The image is always uploaded by hand.
-- MAT limits (title/description length, min/max waypoints, image rules): *not yet checked; fill in on the first run.*
+**MAT limits**
+- At least **6 unique waypoints per mission**. Submitting fewer gives "Mission Validation Error". So plan `count × 6` portals and check this during route design.
+- Title max 50 characters, description max 200 (input `maxLength`). Image: 512×512 is suggested.
+- Clicking "Mission Details" already creates a draft (`/edit?id=…`). Reuse that draft rather than creating another.
+
+**UMM setup**
+- IITC Button loads UMM on intel.ingress.com only. For the UMM bar on missions.ingress.com, the userscript must also be in Tampermonkey (or another userscript manager). The user installs it.
+- UMM keeps one banner in `localStorage["ultimate-mission-maker"]`, separately per site (Intel and MAT). Before overwriting, check whether another banner is stored there and ask.
+- Title format: `T` = banner name, `N` = mission number (`NN` zero-padded), `M` = count. For example `T N/M` gives `… 1/6`.
+
+**Building the route**
+- Writing the UMM state directly into Intel's localStorage is faster and more exact than clicking 36 portals. Use the format below. Take `imageUrl` and `latE6/lngE6` from `window.portals[guid].options.data`, and reload Intel afterwards.
+  - Banner fields: `{missionSetName, missionSetDescription, currentMission:0, plannedBannerLength, titleFormat, fileFormatVersion:2, missions:[…]}`
+  - Each mission: `{missionTitle, missionDescription, portals:[…]}`
+  - Each portal: `{description:"", guid, imageUrl, isOrnamented:false, isStartPoint:(first), location:{latitude,longitude}, title, type:"PORTAL", objective:{type:"HACK_PORTAL", passphrase_params:{question:"", _single_passphrase:""}}}`
+- Getting the JSON into a local file without a download:
+  1. Put `JSON.stringify(state)` into a temporary full-page `<article>` and read it with `get_page_text`.
+  2. Write the file and compare SHA-256 with `crypto.subtle` in the page.
+  3. For small changes, patch the file with Python using `json.dumps(…, separators=(',',':'), ensure_ascii=False)`, which gives the same bytes as `JSON.stringify`.
+- Judging portals by street: IITC portal positions vs. the base map at zoom 17–18, with numbered `L.divIcon` labels. Overpass (OSM) was overloaded. User preference: only portals on the named route streets, no side streets. Ask about each borderline portal.
+
+**In MAT**
+- `file_upload` only accepts files this session may read. Copy the JSON and the images (`mission-NN.png`) into a session folder first.
+- Loading the JSON triggers a `confirm()` that blocks the tab. Before uploading, run `window.confirm=()=>true; window.alert=()=>{}` in the page. After loading, reload the page so the mission selector fills.
+- Per mission:
+  1. Create New Mission, then SEQUENTIAL, then Mission Details.
+  2. Upload image `NN` to the "Upload" file input.
+  3. Select `n:` in the UMM selector, then Import.
+  4. Import jumps straight to the Preview step. If you import before uploading the image, go Back twice to add it.
+  5. Import sometimes does nothing on the first click: click it again.
+- MAT sometimes returns 503 ("upstream connect error") for the image upload. Close the dialog and upload again.
+- Submitted missions show as "(In Review)" with a Withdraw button.
