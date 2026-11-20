@@ -132,3 +132,22 @@ The UMM docs date from 2022. If MAT's UI differs, describe what you see and ask.
   5. Import sometimes does nothing on the first click: click it again.
 - MAT sometimes returns 503 ("upstream connect error") for the image upload. Close the dialog and upload again.
 - Submitted missions show as "(In Review)" with a Withdraw button.
+- Clicking Import a second time when the first one *did* work triggers a confirm dialog ("Your current mission already contains portals/waypoints…"), which blocks the tab. After Import, check the page first (title, 6× "Hack this Portal", PREVIEW) and click again only if nothing happened.
+- Order that works best per mission: select `n:` in the UMM selector, upload image `NN`, wait about 6 s, Import, then check.
+
+**Route planning (second run: Atacames 18, 2026-11-20)**
+- To count portals: move the IITC map at zoom 15 one view at a time with short scripts. One long script that pans several times freezes the tab (CDP timeout).
+- Real street distances: the OSRM servers at `https://routing.openstreetmap.de/routed-{foot,bike,car}/` (table and route services, callable with `fetch` from the Intel page).
+  - The table service rejects 108×108 in one call (`TooBig`). Request `sources=` in chunks of about 36 rows.
+  - Bike follows one-way streets but allows cycle paths and promenades. Car is useless on pedestrian malecóns.
+- Best order: nearest neighbour from several starts, then 2-opt and or-opt (blocks of 1–3) on the asymmetric distance matrix. Use bike if the user wants one-way streets respected.
+- OSM gaps (for example a new malecón extension) make the router detour by kilometres. Patch the matrix by hand: the distance to a nearby anchor portal plus about 1.15 × the straight line. Ask the user about such gaps.
+- 18 missions = 108 portals. Count early whether the area has enough, and tell the user how many spare portals there are, so they can decide which ones to exclude.
+
+**Banner image**
+- Prime cropper: https://softspot.nl/ingress/bannercropper/
+  - It runs in the browser.
+  - Input: 3264 px wide, 544 px per row (16 + 512 + 16).
+  - "Download Badges" gives a ZIP: `badges/<title>-NN.png` (512×512, `-01` = bottom right = mission 1), a preview HTML and the edited image.
+- Before using the cropper, crop the photo to 6:rows with Python/PIL and preview the medal circles (centres at `c*544+272`, `r*544+272`, radius 256). Move the crop so key objects (people, boats, sun) don't fall into the gaps between medals.
+- Free images: the Commons API (`generator=search`, `prop=imageinfo`, `iiprop=size|extmetadata|url`). Show thumbnails as a contact sheet. CC BY-SA images need a credit in the description.
